@@ -2,6 +2,22 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class LearningPathCreate(BaseModel):
+    title: str
+    description: str | None = None
+    target_role: str | None = None
+    status: str = "active"
+
+
+class TopicCreate(BaseModel):
+    title: str
+    description: str | None = None
+    status: str = "not_started"
+    priority: str = "medium"
+    parent_topic_id: str | None = None
+    order_index: int = 0
+
+
 class TopicRead(BaseModel):
     id: str
     learning_path_id: str

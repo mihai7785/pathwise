@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -5,6 +7,7 @@ from app.core.auth import get_current_user
 from app.db.session import get_db
 from app.models.resource import Resource
 from app.models.user import User
+from app.schemas.resource import ResourceCreate
 
 router = APIRouter(prefix="/resources", tags=["resources"])
 
@@ -36,3 +39,32 @@ def list_resources(
         }
         for resource in resources
     ]
+
+
+@router.post("")
+def create_resource(
+    payload: ResourceCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resource = Resource(
+        id=f"res_{uuid.uuid4().hex[:10]}",
+        user_id=current_user.id,
+        type=payload.type,
+        title=payload.title,
+        source_url=payload.source_url,
+        raw_text=payload.raw_text,
+        status="inbox",
+    )
+    db.add(resource)
+    db.commit()
+    db.refresh(resource)
+    return {
+        "id": resource.id,
+        "title": resource.title,
+        "type": resource.type,
+        "status": resource.status,
+        "source_url": resource.source_url,
+        "summary": resource.summary,
+        "suggestions": [],
+    }

@@ -1,12 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.core.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/copilot", tags=["copilot"])
 
 
 @router.get("/conversation")
-def get_copilot_context():
+def get_copilot_context(current_user: User = Depends(get_current_user)):
     return {
-        "title": "AI Engineer Copilot",
+        "title": f"{current_user.name}'s AI Engineer Copilot",
         "starter_prompts": [
             "What should I study next?",
             "Explain embeddings like I'm revising for an interview.",

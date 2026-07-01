@@ -6,14 +6,19 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: #0b1020; color: #e5e7eb; }
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
-input {
+input, select, textarea {
+  width: 100%;
   background: #0f172a;
   border: 1px solid #334155;
   color: #e5e7eb;
   border-radius: 10px;
   padding: 12px;
+}
+textarea {
+  resize: vertical;
+  min-height: 96px;
 }
 
 .app-shell {
@@ -201,6 +206,34 @@ input {
   gap: 16px;
 }
 
+.inline-form-card {
+  margin-bottom: 24px;
+}
+
+.inline-form {
+  display: grid;
+  gap: 16px;
+}
+
+.inline-form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.inline-form-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inline-form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .form-field {
   display: grid;
   gap: 8px;
@@ -217,5 +250,5 @@ input {
 @media (max-width: 960px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid #1f2937; }
-  .stats-grid, .two-col { grid-template-columns: 1fr; }
+  .stats-grid, .two-col, .inline-form-grid-two { grid-template-columns: 1fr; }
 }

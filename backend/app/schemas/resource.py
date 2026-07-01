@@ -6,7 +6,6 @@ from app.schemas.common import TimestampedSchema
 
 
 class ResourceCreate(BaseModel):
-    user_id: str
     type: str
     title: Optional[str] = None
     source_url: Optional[str] = None
