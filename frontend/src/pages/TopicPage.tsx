@@ -3,15 +3,31 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../lib/api'
 import type { TopicDetail } from '../types'
 
-export function TopicPage() {
+type Props = {
+  topicId: string | null
+}
+
+export function TopicPage({ topicId }: Props) {
   const [topic, setTopic] = useState<TopicDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiGet<TopicDetail>('/topics/topic_rag')
-      .then(setTopic)
+    if (!topicId) {
+      setTopic(null)
+      setError(null)
+      return
+    }
+    apiGet<TopicDetail>(`/topics/${topicId}`)
+      .then((result) => {
+        setTopic(result)
+        setError(null)
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load topic'))
-  }, [])
+  }, [topicId])
+
+  if (!topicId) {
+    return <div className="page"><div className="card">Open a topic from the Learning Path page.</div></div>
+  }
 
   if (error) {
     return <div className="page"><div className="card">Topic error: {error}</div></div>

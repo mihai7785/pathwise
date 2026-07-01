@@ -1,20 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.db.session import get_db
 from app.models.learning import Topic
-from app.services.seed import DEMO_USER_ID, PATH_ID
+from app.models.user import User
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
 
 @router.get("/{topic_id}")
-def get_topic(topic_id: str, db: Session = Depends(get_db)):
+def get_topic(
+    topic_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     topic = db.query(Topic).filter(Topic.id == topic_id).first()
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
 
-    path_owned = topic.learning_path.user_id == DEMO_USER_ID if topic.learning_path else False
+    path_owned = topic.learning_path.user_id == current_user.id if topic.learning_path else False
     if not path_owned:
         raise HTTPException(status_code=404, detail="Topic not found")
 

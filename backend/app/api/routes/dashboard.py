@@ -1,25 +1,29 @@
+from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, Depends
 
+from app.core.auth import get_current_user
 from app.db.session import get_db
 from app.models.learning import LearningPath, Topic
 from app.models.resource import Resource
-from app.services.seed import DEMO_USER_ID
+from app.models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("")
-def get_dashboard(db: Session = Depends(get_db)):
-    paths = db.query(LearningPath).filter(LearningPath.user_id == DEMO_USER_ID).all()
-    topics = db.query(Topic).join(LearningPath, Topic.learning_path_id == LearningPath.id).filter(LearningPath.user_id == DEMO_USER_ID).all()
-    resources = db.query(Resource).filter(Resource.user_id == DEMO_USER_ID).all()
+def get_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    paths = db.query(LearningPath).filter(LearningPath.user_id == current_user.id).all()
+    topics = db.query(Topic).join(LearningPath, Topic.learning_path_id == LearningPath.id).filter(LearningPath.user_id == current_user.id).all()
+    resources = db.query(Resource).filter(Resource.user_id == current_user.id).all()
 
     topic_status_counts = (
         db.query(Topic.status, func.count(Topic.id))
         .join(LearningPath, Topic.learning_path_id == LearningPath.id)
-        .filter(LearningPath.user_id == DEMO_USER_ID)
+        .filter(LearningPath.user_id == current_user.id)
         .group_by(Topic.status)
         .all()
     )

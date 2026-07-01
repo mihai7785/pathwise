@@ -3,7 +3,11 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../lib/api'
 import type { LearningPath } from '../types'
 
-export function PathPage() {
+type Props = {
+  onOpenTopic: (topicId: string) => void
+}
+
+export function PathPage({ onOpenTopic }: Props) {
   const [path, setPath] = useState<LearningPath | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,7 +49,10 @@ export function PathPage() {
               <div>
                 <strong>{topic.title}</strong>
               </div>
-              <span className={`badge ${topic.status}`}>{topic.status.replace('_', ' ')}</span>
+              <div className="topic-row-actions">
+                <span className={`badge ${topic.status}`}>{topic.status.replace('_', ' ')}</span>
+                <button className="secondary-button" onClick={() => onOpenTopic(topic.id)}>Open</button>
+              </div>
             </div>
           ))}
         </div>
