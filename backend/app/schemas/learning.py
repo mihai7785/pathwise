@@ -54,3 +54,12 @@ class LearningPathRead(BaseModel):
 
 class LearningPathWithTopics(LearningPathRead):
     topics: list[TopicRead]
+
+
+class TopicUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    confidence: int | None = None
+    estimated_hours: float | None = None

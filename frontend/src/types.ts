@@ -73,3 +73,13 @@ export type CopilotContext = {
   starter_prompts: string[]
   provider_strategy: string
 }
+
+export type TopicStatus = 'not_started' | 'in_progress' | 'blocked' | 'done'
+
+export type TopicLinkResponse = {
+  ok: boolean
+  already_linked: boolean
+  topic_id: string
+  topic_title?: string
+  resource_id: string
+}

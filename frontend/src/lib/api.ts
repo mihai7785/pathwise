@@ -49,3 +49,15 @@ export async function apiPost<T>(path: string, body: unknown, options?: Omit<Api
     body: JSON.stringify(body),
   })
 }
+
+export async function apiPatch<T>(path: string, body: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>): Promise<T> {
+  const requestHeaders = new Headers(options?.headers)
+  requestHeaders.set('Content-Type', 'application/json')
+
+  return apiRequest<T>(path, {
+    ...options,
+    method: 'PATCH',
+    headers: requestHeaders,
+    body: JSON.stringify(body),
+  })
+}

@@ -22,3 +22,7 @@ class ResourceRead(TimestampedSchema):
     extracted_text: Optional[str] = None
     summary: Optional[str] = None
     status: str
+
+
+class ResourceTopicLinkCreate(BaseModel):
+    topic_id: str

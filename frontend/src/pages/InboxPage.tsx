@@ -1,10 +1,17 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { apiGet, apiPost } from '../lib/api'
-import type { Resource } from '../types'
+import type { LearningPath, Resource, TopicLinkResponse } from '../types'
+
+type TopicOption = {
+  id: string
+  title: string
+  pathTitle: string
+}
 
 export function InboxPage() {
   const [resources, setResources] = useState<Resource[]>([])
+  const [topics, setTopics] = useState<TopicOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -13,16 +20,36 @@ export function InboxPage() {
   const [title, setTitle] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [rawText, setRawText] = useState('')
+  const [selectedTopicByResource, setSelectedTopicByResource] = useState<Record<string, string>>({})
+  const [linkingResourceId, setLinkingResourceId] = useState<string | null>(null)
+  const [linkErrorByResource, setLinkErrorByResource] = useState<Record<string, string>>({})
 
   const loadResources = useCallback(async () => {
-    setError(null)
     const nextResources = await apiGet<Resource[]>('/resources')
     setResources(nextResources)
   }, [])
 
+  const loadTopics = useCallback(async () => {
+    const paths = await apiGet<LearningPath[]>('/paths')
+    const pathDetails = await Promise.all(paths.map((path) => apiGet<LearningPath>(`/paths/${path.id}`)))
+    const nextTopics = pathDetails.flatMap((path) =>
+      (path.topics ?? []).map((topic) => ({
+        id: topic.id,
+        title: topic.title,
+        pathTitle: path.title,
+      })),
+    )
+    setTopics(nextTopics)
+  }, [])
+
+  const loadInbox = useCallback(async () => {
+    setError(null)
+    await Promise.all([loadResources(), loadTopics()])
+  }, [loadResources, loadTopics])
+
   useEffect(() => {
-    loadResources().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load resources'))
-  }, [loadResources])
+    loadInbox().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load inbox'))
+  }, [loadInbox])
 
   const resetForm = () => {
     setResourceType('link')
@@ -31,6 +58,12 @@ export function InboxPage() {
     setRawText('')
     setFormError(null)
   }
+
+  const suggestedTopicByResource = useMemo(() => {
+    return Object.fromEntries(
+      resources.map((resource) => [resource.id, resource.suggestions[0]?.topic_id ?? '']),
+    )
+  }, [resources])
 
   const handleAddResource = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -66,6 +99,29 @@ export function InboxPage() {
       setFormError(err instanceof Error ? err.message : 'Failed to add resource')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleLinkTopic = async (resourceId: string) => {
+    const topicId = selectedTopicByResource[resourceId] || suggestedTopicByResource[resourceId]
+    if (!topicId) {
+      setLinkErrorByResource((current) => ({ ...current, [resourceId]: 'Choose a topic first.' }))
+      return
+    }
+
+    setLinkingResourceId(resourceId)
+    setLinkErrorByResource((current) => ({ ...current, [resourceId]: '' }))
+
+    try {
+      await apiPost<TopicLinkResponse>(`/resources/${resourceId}/link-topic`, { topic_id: topicId })
+      await loadResources()
+    } catch (err) {
+      setLinkErrorByResource((current) => ({
+        ...current,
+        [resourceId]: err instanceof Error ? err.message : 'Failed to link resource to topic',
+      }))
+    } finally {
+      setLinkingResourceId(null)
     }
   }
 
@@ -156,21 +212,51 @@ export function InboxPage() {
       <section className="card">
         <h2>Resources</h2>
         <div className="resource-list">
-          {resources.map((resource) => (
-            <div key={resource.id} className="resource-row">
-              <div>
-                <strong>{resource.title}</strong>
-                <div className="muted small">{resource.type} • {resource.status}</div>
-                <p>{resource.summary}</p>
-                {resource.suggestions[0] && (
-                  <div className="muted small">
-                    Suggested topic: {resource.suggestions[0].topic_title} ({Math.round((resource.suggestions[0].confidence_score ?? 0) * 100)}%)
-                  </div>
-                )}
+          {resources.map((resource) => {
+            const selectedTopicId = selectedTopicByResource[resource.id] ?? suggestedTopicByResource[resource.id] ?? ''
+
+            return (
+              <div key={resource.id} className="resource-row">
+              <div className="resource-content">
+                  <strong>{resource.title || 'Untitled resource'}</strong>
+                  <div className="muted small">{resource.type} • {resource.status}</div>
+                  <p>{resource.summary}</p>
+                  {resource.suggestions[0] && (
+                    <div className="muted small">
+                      Suggested topic: {resource.suggestions[0].topic_title} ({Math.round((resource.suggestions[0].confidence_score ?? 0) * 100)}%)
+                    </div>
+                  )}
+                </div>
+
+                <div className="resource-linker">
+                  <label className="form-field">
+                    <span>Link to topic</span>
+                    <select
+                      value={selectedTopicId}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        setSelectedTopicByResource((current) => ({ ...current, [resource.id]: value }))
+                      }}
+                      disabled={topics.length === 0 || linkingResourceId === resource.id}
+                    >
+                      <option value="">Select a topic</option>
+                      {topics.map((topic) => (
+                        <option key={topic.id} value={topic.id}>{topic.title} · {topic.pathTitle}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="secondary-button"
+                    onClick={() => handleLinkTopic(resource.id)}
+                    disabled={topics.length === 0 || linkingResourceId === resource.id || !selectedTopicId}
+                  >
+                    {linkingResourceId === resource.id ? 'Linking…' : 'Link topic'}
+                  </button>
+                  {linkErrorByResource[resource.id] && <div className="auth-error">{linkErrorByResource[resource.id]}</div>}
+                </div>
               </div>
-              <button>Suggest topic</button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </section>
     </div>

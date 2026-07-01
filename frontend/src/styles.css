@@ -148,6 +148,18 @@ textarea {
   gap: 10px;
 }
 
+.status-editor {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.status-editor-field {
+  min-width: 220px;
+}
+
 .topic-row:last-child, .resource-row:last-child { border-bottom: 0; }
 .badge {
   border-radius: 999px;
@@ -234,6 +246,17 @@ textarea {
   flex-wrap: wrap;
 }
 
+.resource-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.resource-linker {
+  min-width: 260px;
+  display: grid;
+  gap: 10px;
+}
+
 .form-field {
   display: grid;
   gap: 8px;
@@ -251,4 +274,42 @@ textarea {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid #1f2937; }
   .stats-grid, .two-col, .inline-form-grid-two { grid-template-columns: 1fr; }
+}
+
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.compact-grid {
+  align-items: end;
+}
+
+.path-meta {
+  display: flex;
+  align-items: center;
+}
+
+.status-editor {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.status-editor-field {
+  min-width: 220px;
+}
+
+.resource-content {
+  flex: 1;
+}
+
+.resource-linker {
+  width: min(100%, 320px);
+  display: grid;
+  gap: 10px;
 }

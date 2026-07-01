@@ -36,13 +36,15 @@ npm run dev
 - topic hierarchy and dependencies
 - local auth/session flow for development
 - user-scoped API access
-- topic and resource creation flows
+- path, topic, and resource creation flows
+- topic status updates
+- resource-to-topic linking
 - sample seeded starter data per user
 - React screens for Dashboard, Path, Topic, Inbox, and Copilot
 
 ## Next recommended steps
-1. Complete CRUD for paths/topics/resources
-2. Add topic-resource linking flows
+1. Complete edit/delete flows for paths/topics/resources
+2. Add richer resource processing and AI-assisted classification
 3. Add async AI job processing
 4. Add file uploads + OCR/extraction pipeline
 5. Add richer study analytics and reviews

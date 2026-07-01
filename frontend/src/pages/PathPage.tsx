@@ -8,30 +8,50 @@ type Props = {
 }
 
 export function PathPage({ onOpenTopic }: Props) {
+  const [paths, setPaths] = useState<LearningPath[]>([])
+  const [selectedPathId, setSelectedPathId] = useState<string>('')
   const [path, setPath] = useState<LearningPath | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [showAddTopicForm, setShowAddTopicForm] = useState(false)
+  const [showCreatePathForm, setShowCreatePathForm] = useState(false)
+  const [isSavingTopic, setIsSavingTopic] = useState(false)
+  const [isCreatingPath, setIsCreatingPath] = useState(false)
+  const [topicFormError, setTopicFormError] = useState<string | null>(null)
+  const [pathFormError, setPathFormError] = useState<string | null>(null)
   const [topicTitle, setTopicTitle] = useState('')
   const [topicDescription, setTopicDescription] = useState('')
   const [topicPriority, setTopicPriority] = useState('medium')
+  const [pathTitle, setPathTitle] = useState('')
+  const [pathDescription, setPathDescription] = useState('')
+  const [pathTargetRole, setPathTargetRole] = useState('')
 
-  const loadPath = useCallback(async () => {
+  const loadPathData = useCallback(async (preferredPathId?: string) => {
     setError(null)
 
-    const paths = await apiGet<LearningPath[]>('/paths')
-    if (paths.length === 0) {
-      throw new Error('No learning paths found')
+    const nextPaths = await apiGet<LearningPath[]>('/paths')
+    setPaths(nextPaths)
+
+    if (nextPaths.length === 0) {
+      setSelectedPathId('')
+      setPath(null)
+      return
     }
 
-    const fullPath = await apiGet<LearningPath>(`/paths/${paths[0].id}`)
+    const resolvedPathId = preferredPathId && nextPaths.some((candidate) => candidate.id === preferredPathId)
+      ? preferredPathId
+      : selectedPathId && nextPaths.some((candidate) => candidate.id === selectedPathId)
+        ? selectedPathId
+        : nextPaths[0].id
+
+    setSelectedPathId(resolvedPathId)
+
+    const fullPath = await apiGet<LearningPath>(`/paths/${resolvedPathId}`)
     setPath(fullPath)
-  }, [])
+  }, [selectedPathId])
 
   useEffect(() => {
-    loadPath().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load path'))
-  }, [loadPath])
+    loadPathData().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load paths'))
+  }, [loadPathData])
 
   const nextOrderIndex = useMemo(() => {
     if (!path?.topics?.length) {
@@ -41,11 +61,48 @@ export function PathPage({ onOpenTopic }: Props) {
     return Math.max(...path.topics.map((topic) => topic.order_index)) + 1
   }, [path])
 
-  const resetForm = () => {
+  const resetTopicForm = () => {
     setTopicTitle('')
     setTopicDescription('')
     setTopicPriority('medium')
-    setFormError(null)
+    setTopicFormError(null)
+  }
+
+  const resetPathForm = () => {
+    setPathTitle('')
+    setPathDescription('')
+    setPathTargetRole('')
+    setPathFormError(null)
+  }
+
+  const handleCreatePath = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const trimmedTitle = pathTitle.trim()
+    if (!trimmedTitle) {
+      setPathFormError('Path title is required.')
+      return
+    }
+
+    setIsCreatingPath(true)
+    setPathFormError(null)
+
+    try {
+      const createdPath = await apiPost<LearningPath>('/paths', {
+        title: trimmedTitle,
+        description: pathDescription.trim() || null,
+        target_role: pathTargetRole.trim() || null,
+        status: 'active',
+      })
+      await loadPathData(createdPath.id)
+      resetPathForm()
+      setShowCreatePathForm(false)
+      setShowAddTopicForm(false)
+    } catch (err) {
+      setPathFormError(err instanceof Error ? err.message : 'Failed to create path')
+    } finally {
+      setIsCreatingPath(false)
+    }
   }
 
   const handleAddTopic = async (event: FormEvent<HTMLFormElement>) => {
@@ -57,12 +114,12 @@ export function PathPage({ onOpenTopic }: Props) {
 
     const trimmedTitle = topicTitle.trim()
     if (!trimmedTitle) {
-      setFormError('Topic title is required.')
+      setTopicFormError('Topic title is required.')
       return
     }
 
-    setIsSaving(true)
-    setFormError(null)
+    setIsSavingTopic(true)
+    setTopicFormError(null)
 
     try {
       await apiPost<Topic>(`/paths/${path.id}/topics`, {
@@ -71,13 +128,13 @@ export function PathPage({ onOpenTopic }: Props) {
         priority: topicPriority,
         order_index: nextOrderIndex,
       })
-      await loadPath()
-      resetForm()
-      setShowAddForm(false)
+      await loadPathData(path.id)
+      resetTopicForm()
+      setShowAddTopicForm(false)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to add topic')
+      setTopicFormError(err instanceof Error ? err.message : 'Failed to add topic')
     } finally {
-      setIsSaving(false)
+      setIsSavingTopic(false)
     }
   }
 
@@ -85,26 +142,124 @@ export function PathPage({ onOpenTopic }: Props) {
     return <div className="page"><div className="card">Path error: {error}</div></div>
   }
 
-  if (!path) {
-    return <div className="page"><div className="card">Loading path…</div></div>
-  }
-
   return (
     <div className="page">
       <div className="page-header">
         <div>
-          <h1>{path.title}</h1>
-          <p className="muted">{path.description ?? 'Structured theory + practice path.'}</p>
+          <h1>{path?.title ?? 'Learning paths'}</h1>
+          <p className="muted">Create a path, switch between paths, and keep topics moving.</p>
         </div>
-        <button className="primary" onClick={() => {
-          setShowAddForm((current) => !current)
-          setFormError(null)
-        }}>
-          {showAddForm ? 'Close' : 'Add topic'}
-        </button>
+        <div className="header-actions">
+          <button
+            className="secondary-button"
+            onClick={() => {
+              setShowCreatePathForm((current) => !current)
+              setPathFormError(null)
+            }}
+          >
+            {showCreatePathForm ? 'Close path form' : 'Create path'}
+          </button>
+          <button
+            className="primary"
+            onClick={() => {
+              setShowAddTopicForm((current) => !current)
+              setTopicFormError(null)
+            }}
+            disabled={!path}
+          >
+            {showAddTopicForm ? 'Close topic form' : 'Add topic'}
+          </button>
+        </div>
       </div>
 
-      {showAddForm && (
+      <section className="card inline-form-card">
+        <div className="inline-form-grid inline-form-grid-two compact-grid">
+          <label className="form-field inline-form-field-wide">
+            <span>Current learning path</span>
+            <select
+              value={selectedPathId}
+              onChange={(event) => {
+                const nextPathId = event.target.value
+                setSelectedPathId(nextPathId)
+                loadPathData(nextPathId).catch((err) => setError(err instanceof Error ? err.message : 'Failed to switch path'))
+              }}
+              disabled={paths.length === 0}
+            >
+              {paths.length === 0 ? (
+                <option value="">No paths yet</option>
+              ) : (
+                paths.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>{candidate.title}</option>
+                ))
+              )}
+            </select>
+          </label>
+
+          {path && (
+            <div className="path-meta muted small">
+              Status: {path.status} • {path.topics?.length ?? 0} topic{path.topics?.length === 1 ? '' : 's'}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {showCreatePathForm && (
+        <section className="card inline-form-card">
+          <form className="inline-form" onSubmit={handleCreatePath}>
+            <div className="inline-form-grid inline-form-grid-two">
+              <label className="form-field inline-form-field-wide">
+                <span>Path title</span>
+                <input
+                  autoFocus
+                  placeholder="e.g. Applied AI engineer"
+                  value={pathTitle}
+                  onChange={(event) => setPathTitle(event.target.value)}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Target role</span>
+                <input
+                  placeholder="Optional"
+                  value={pathTargetRole}
+                  onChange={(event) => setPathTargetRole(event.target.value)}
+                />
+              </label>
+
+              <label className="form-field inline-form-field-wide">
+                <span>Description</span>
+                <textarea
+                  rows={3}
+                  placeholder="What are you trying to learn?"
+                  value={pathDescription}
+                  onChange={(event) => setPathDescription(event.target.value)}
+                />
+              </label>
+            </div>
+
+            {pathFormError && <div className="auth-error">{pathFormError}</div>}
+
+            <div className="inline-actions">
+              <button className="primary" type="submit" disabled={isCreatingPath}>
+                {isCreatingPath ? 'Creating…' : 'Create learning path'}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  resetPathForm()
+                  setShowCreatePathForm(false)
+                }}
+                disabled={isCreatingPath}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {showAddTopicForm && (
         <section className="card inline-form-card">
           <form className="inline-form" onSubmit={handleAddTopic}>
             <div className="inline-form-grid inline-form-grid-two">
@@ -138,20 +293,20 @@ export function PathPage({ onOpenTopic }: Props) {
               </label>
             </div>
 
-            {formError && <div className="auth-error">{formError}</div>}
+            {topicFormError && <div className="auth-error">{topicFormError}</div>}
 
             <div className="inline-actions">
-              <button className="primary" type="submit" disabled={isSaving}>
-                {isSaving ? 'Adding…' : 'Create topic'}
+              <button className="primary" type="submit" disabled={isSavingTopic || !path}>
+                {isSavingTopic ? 'Adding…' : 'Create topic'}
               </button>
               <button
                 className="secondary-button"
                 type="button"
                 onClick={() => {
-                  resetForm()
-                  setShowAddForm(false)
+                  resetTopicForm()
+                  setShowAddTopicForm(false)
                 }}
-                disabled={isSaving}
+                disabled={isSavingTopic}
               >
                 Cancel
               </button>
@@ -160,23 +315,33 @@ export function PathPage({ onOpenTopic }: Props) {
         </section>
       )}
 
-      <section className="card">
-        <h2>Topics</h2>
-        <div className="topic-list">
-          {path.topics?.map((topic) => (
-            <div key={topic.id} className="topic-row">
-              <div>
-                <strong>{topic.title}</strong>
-                {topic.description && <p className="muted">{topic.description}</p>}
+      {!path ? (
+        <section className="card">
+          <h2>No learning path yet</h2>
+          <p className="muted">Create your first path to start organizing topics and resources.</p>
+        </section>
+      ) : (
+        <section className="card">
+          <h2>Topics</h2>
+          <div className="topic-list">
+            {path.topics?.map((topic) => (
+              <div key={topic.id} className="topic-row">
+                <div>
+                  <strong>{topic.title}</strong>
+                  {topic.description && <p className="muted">{topic.description}</p>}
+                </div>
+                <div className="topic-row-actions">
+                  <span className={`badge ${topic.status}`}>{topic.status.replace('_', ' ')}</span>
+                  <button className="secondary-button" onClick={() => onOpenTopic(topic.id)}>Open</button>
+                </div>
               </div>
-              <div className="topic-row-actions">
-                <span className={`badge ${topic.status}`}>{topic.status.replace('_', ' ')}</span>
-                <button className="secondary-button" onClick={() => onOpenTopic(topic.id)}>Open</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+            {path.topics?.length === 0 && (
+              <p className="muted">No topics yet. Add the first topic for this path.</p>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
