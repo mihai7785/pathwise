@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+learning_copilot.db
+run/
+node_modules/
+dist/
+.vite/
+.env
