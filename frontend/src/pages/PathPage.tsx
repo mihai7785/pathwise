@@ -1,11 +1,13 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
-import { apiGet, apiPost } from '../lib/api'
-import type { LearningPath, Topic } from '../types'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../lib/api'
+import type { LearningPath, LearningPathStatus, Topic } from '../types'
 
 type Props = {
   onOpenTopic: (topicId: string) => void
 }
+
+const PATH_STATUSES: LearningPathStatus[] = ['active', 'paused', 'completed', 'archived']
 
 export function PathPage({ onOpenTopic }: Props) {
   const [paths, setPaths] = useState<LearningPath[]>([])
@@ -14,16 +16,23 @@ export function PathPage({ onOpenTopic }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [showAddTopicForm, setShowAddTopicForm] = useState(false)
   const [showCreatePathForm, setShowCreatePathForm] = useState(false)
+  const [showEditPathForm, setShowEditPathForm] = useState(false)
   const [isSavingTopic, setIsSavingTopic] = useState(false)
   const [isCreatingPath, setIsCreatingPath] = useState(false)
+  const [isSavingPath, setIsSavingPath] = useState(false)
+  const [deletingPathId, setDeletingPathId] = useState<string | null>(null)
+  const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null)
   const [topicFormError, setTopicFormError] = useState<string | null>(null)
   const [pathFormError, setPathFormError] = useState<string | null>(null)
+  const [pathActionError, setPathActionError] = useState<string | null>(null)
+  const [topicActionError, setTopicActionError] = useState<string | null>(null)
   const [topicTitle, setTopicTitle] = useState('')
   const [topicDescription, setTopicDescription] = useState('')
   const [topicPriority, setTopicPriority] = useState('medium')
   const [pathTitle, setPathTitle] = useState('')
   const [pathDescription, setPathDescription] = useState('')
   const [pathTargetRole, setPathTargetRole] = useState('')
+  const [pathStatus, setPathStatus] = useState<LearningPathStatus>('active')
 
   const loadPathData = useCallback(async (preferredPathId?: string) => {
     setError(null)
@@ -72,6 +81,15 @@ export function PathPage({ onOpenTopic }: Props) {
     setPathTitle('')
     setPathDescription('')
     setPathTargetRole('')
+    setPathStatus('active')
+    setPathFormError(null)
+  }
+
+  const seedEditPathForm = (currentPath: LearningPath) => {
+    setPathTitle(currentPath.title)
+    setPathDescription(currentPath.description ?? '')
+    setPathTargetRole(currentPath.target_role ?? '')
+    setPathStatus(currentPath.status)
     setPathFormError(null)
   }
 
@@ -102,6 +120,64 @@ export function PathPage({ onOpenTopic }: Props) {
       setPathFormError(err instanceof Error ? err.message : 'Failed to create path')
     } finally {
       setIsCreatingPath(false)
+    }
+  }
+
+  const handleUpdatePath = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!path) {
+      return
+    }
+
+    const trimmedTitle = pathTitle.trim()
+    if (!trimmedTitle) {
+      setPathFormError('Path title is required.')
+      return
+    }
+
+    setIsSavingPath(true)
+    setPathFormError(null)
+    setPathActionError(null)
+
+    try {
+      await apiPatch<LearningPath>(`/paths/${path.id}`, {
+        title: trimmedTitle,
+        description: pathDescription.trim() || null,
+        target_role: pathTargetRole.trim() || null,
+        status: pathStatus,
+      })
+      await loadPathData(path.id)
+      setShowEditPathForm(false)
+    } catch (err) {
+      setPathFormError(err instanceof Error ? err.message : 'Failed to update path')
+    } finally {
+      setIsSavingPath(false)
+    }
+  }
+
+  const handleDeletePath = async () => {
+    if (!path) {
+      return
+    }
+
+    const confirmed = window.confirm(`Delete learning path "${path.title}"? This also removes its topics.`)
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingPathId(path.id)
+    setPathActionError(null)
+
+    try {
+      await apiDelete(`/paths/${path.id}`)
+      setShowEditPathForm(false)
+      resetPathForm()
+      setShowAddTopicForm(false)
+      await loadPathData()
+    } catch (err) {
+      setPathActionError(err instanceof Error ? err.message : 'Failed to delete path')
+    } finally {
+      setDeletingPathId(null)
     }
   }
 
@@ -138,6 +214,27 @@ export function PathPage({ onOpenTopic }: Props) {
     }
   }
 
+  const handleDeleteTopic = async (topic: Topic) => {
+    const confirmed = window.confirm(`Delete topic "${topic.title}"?`)
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingTopicId(topic.id)
+    setTopicActionError(null)
+
+    try {
+      await apiDelete(`/topics/${topic.id}`)
+      if (path) {
+        await loadPathData(path.id)
+      }
+    } catch (err) {
+      setTopicActionError(err instanceof Error ? err.message : 'Failed to delete topic')
+    } finally {
+      setDeletingTopicId(null)
+    }
+  }
+
   if (error) {
     return <div className="page"><div className="card">Path error: {error}</div></div>
   }
@@ -155,9 +252,27 @@ export function PathPage({ onOpenTopic }: Props) {
             onClick={() => {
               setShowCreatePathForm((current) => !current)
               setPathFormError(null)
+              if (showEditPathForm) {
+                setShowEditPathForm(false)
+                resetPathForm()
+              }
             }}
           >
             {showCreatePathForm ? 'Close path form' : 'Create path'}
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => {
+              if (!path) {
+                return
+              }
+              seedEditPathForm(path)
+              setShowEditPathForm((current) => !current)
+              setShowCreatePathForm(false)
+            }}
+            disabled={!path}
+          >
+            {showEditPathForm ? 'Close editor' : 'Edit path'}
           </button>
           <button
             className="primary"
@@ -201,6 +316,7 @@ export function PathPage({ onOpenTopic }: Props) {
             </div>
           )}
         </div>
+        {pathActionError && <div className="auth-error top-spacing">{pathActionError}</div>}
       </section>
 
       {showCreatePathForm && (
@@ -253,6 +369,82 @@ export function PathPage({ onOpenTopic }: Props) {
                 disabled={isCreatingPath}
               >
                 Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {showEditPathForm && path && (
+        <section className="card inline-form-card">
+          <form className="inline-form" onSubmit={handleUpdatePath}>
+            <div className="inline-form-grid inline-form-grid-two">
+              <label className="form-field inline-form-field-wide">
+                <span>Path title</span>
+                <input
+                  autoFocus
+                  value={pathTitle}
+                  onChange={(event) => setPathTitle(event.target.value)}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Target role</span>
+                <input
+                  placeholder="Optional"
+                  value={pathTargetRole}
+                  onChange={(event) => setPathTargetRole(event.target.value)}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Status</span>
+                <select
+                  value={pathStatus}
+                  onChange={(event) => setPathStatus(event.target.value as LearningPathStatus)}
+                >
+                  {PATH_STATUSES.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-field inline-form-field-wide">
+                <span>Description</span>
+                <textarea
+                  rows={3}
+                  value={pathDescription}
+                  onChange={(event) => setPathDescription(event.target.value)}
+                />
+              </label>
+            </div>
+
+            {pathFormError && <div className="auth-error">{pathFormError}</div>}
+
+            <div className="inline-actions split-actions">
+              <div className="inline-actions">
+                <button className="primary" type="submit" disabled={isSavingPath}>
+                  {isSavingPath ? 'Saving…' : 'Save path'}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => {
+                    resetPathForm()
+                    setShowEditPathForm(false)
+                  }}
+                  disabled={isSavingPath}
+                >
+                  Cancel
+                </button>
+              </div>
+              <button
+                className="danger-button"
+                type="button"
+                onClick={handleDeletePath}
+                disabled={deletingPathId === path.id || isSavingPath}
+              >
+                {deletingPathId === path.id ? 'Deleting…' : 'Delete path'}
               </button>
             </div>
           </form>
@@ -323,6 +515,7 @@ export function PathPage({ onOpenTopic }: Props) {
       ) : (
         <section className="card">
           <h2>Topics</h2>
+          {topicActionError && <div className="auth-error bottom-spacing">{topicActionError}</div>}
           <div className="topic-list">
             {path.topics?.map((topic) => (
               <div key={topic.id} className="topic-row">
@@ -330,9 +523,16 @@ export function PathPage({ onOpenTopic }: Props) {
                   <strong>{topic.title}</strong>
                   {topic.description && <p className="muted">{topic.description}</p>}
                 </div>
-                <div className="topic-row-actions">
+                <div className="topic-row-actions multi-row-actions">
                   <span className={`badge ${topic.status}`}>{topic.status.replace('_', ' ')}</span>
                   <button className="secondary-button" onClick={() => onOpenTopic(topic.id)}>Open</button>
+                  <button
+                    className="danger-button"
+                    onClick={() => handleDeleteTopic(topic)}
+                    disabled={deletingTopicId === topic.id}
+                  >
+                    {deletingTopicId === topic.id ? 'Deleting…' : 'Delete'}
+                  </button>
                 </div>
               </div>
             ))}

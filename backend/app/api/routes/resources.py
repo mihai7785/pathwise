@@ -27,6 +27,13 @@ def list_resources(
             "status": resource.status,
             "source_url": resource.source_url,
             "summary": resource.summary,
+            "linked_topics": [
+                {
+                    "topic_id": link.topic_id,
+                    "topic_title": link.topic.title if link.topic else None,
+                }
+                for link in resource.topic_links
+            ],
             "suggestions": [
                 {
                     "topic_id": suggestion.topic_id,
@@ -67,6 +74,7 @@ def create_resource(
         "status": resource.status,
         "source_url": resource.source_url,
         "summary": resource.summary,
+        "linked_topics": [],
         "suggestions": [],
     }
 
@@ -117,3 +125,43 @@ def link_resource_to_topic(
         "topic_title": topic.title,
         "resource_id": resource.id,
     }
+
+
+@router.delete("/{resource_id}", status_code=204)
+def delete_resource(
+    resource_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resource = db.query(Resource).filter(Resource.id == resource_id, Resource.user_id == current_user.id).first()
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    db.delete(resource)
+    db.commit()
+
+
+@router.delete("/{resource_id}/topics/{topic_id}", status_code=204)
+def unlink_resource_from_topic(
+    resource_id: str,
+    topic_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resource = db.query(Resource).filter(Resource.id == resource_id, Resource.user_id == current_user.id).first()
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic or not topic.learning_path or topic.learning_path.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    link = (
+        db.query(TopicResource)
+        .filter(TopicResource.resource_id == resource.id, TopicResource.topic_id == topic.id)
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+
+    db.delete(link)
+    db.commit()

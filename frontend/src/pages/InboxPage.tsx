@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
-import { apiGet, apiPost } from '../lib/api'
+import { apiDelete, apiGet, apiPost } from '../lib/api'
 import type { LearningPath, Resource, TopicLinkResponse } from '../types'
 
 type TopicOption = {
@@ -15,6 +15,7 @@ export function InboxPage() {
   const [error, setError] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingResourceId, setDeletingResourceId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [resourceType, setResourceType] = useState('link')
   const [title, setTitle] = useState('')
@@ -23,6 +24,7 @@ export function InboxPage() {
   const [selectedTopicByResource, setSelectedTopicByResource] = useState<Record<string, string>>({})
   const [linkingResourceId, setLinkingResourceId] = useState<string | null>(null)
   const [linkErrorByResource, setLinkErrorByResource] = useState<Record<string, string>>({})
+  const [resourceActionError, setResourceActionError] = useState<string | null>(null)
 
   const loadResources = useCallback(async () => {
     const nextResources = await apiGet<Resource[]>('/resources')
@@ -125,6 +127,25 @@ export function InboxPage() {
     }
   }
 
+  const handleDeleteResource = async (resource: Resource) => {
+    const confirmed = window.confirm(`Delete resource "${resource.title || 'Untitled resource'}"?`)
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingResourceId(resource.id)
+    setResourceActionError(null)
+
+    try {
+      await apiDelete(`/resources/${resource.id}`)
+      await loadResources()
+    } catch (err) {
+      setResourceActionError(err instanceof Error ? err.message : 'Failed to delete resource')
+    } finally {
+      setDeletingResourceId(null)
+    }
+  }
+
   if (error) {
     return <div className="page"><div className="card">Inbox error: {error}</div></div>
   }
@@ -211,14 +232,24 @@ export function InboxPage() {
 
       <section className="card">
         <h2>Resources</h2>
+        {resourceActionError && <div className="auth-error bottom-spacing">{resourceActionError}</div>}
         <div className="resource-list">
           {resources.map((resource) => {
             const selectedTopicId = selectedTopicByResource[resource.id] ?? suggestedTopicByResource[resource.id] ?? ''
 
             return (
               <div key={resource.id} className="resource-row">
-              <div className="resource-content">
-                  <strong>{resource.title || 'Untitled resource'}</strong>
+                <div className="resource-content">
+                  <div className="resource-heading">
+                    <strong>{resource.title || 'Untitled resource'}</strong>
+                    <button
+                      className="danger-button"
+                      onClick={() => handleDeleteResource(resource)}
+                      disabled={deletingResourceId === resource.id}
+                    >
+                      {deletingResourceId === resource.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
                   <div className="muted small">{resource.type} • {resource.status}</div>
                   <p>{resource.summary}</p>
                   {resource.suggestions[0] && (
@@ -237,7 +268,7 @@ export function InboxPage() {
                         const value = event.target.value
                         setSelectedTopicByResource((current) => ({ ...current, [resource.id]: value }))
                       }}
-                      disabled={topics.length === 0 || linkingResourceId === resource.id}
+                      disabled={topics.length === 0 || linkingResourceId === resource.id || deletingResourceId === resource.id}
                     >
                       <option value="">Select a topic</option>
                       {topics.map((topic) => (
@@ -248,7 +279,7 @@ export function InboxPage() {
                   <button
                     className="secondary-button"
                     onClick={() => handleLinkTopic(resource.id)}
-                    disabled={topics.length === 0 || linkingResourceId === resource.id || !selectedTopicId}
+                    disabled={topics.length === 0 || linkingResourceId === resource.id || deletingResourceId === resource.id || !selectedTopicId}
                   >
                     {linkingResourceId === resource.id ? 'Linking…' : 'Link topic'}
                   </button>

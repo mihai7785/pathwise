@@ -7,7 +7,7 @@ from app.core.auth import get_current_user
 from app.db.session import get_db
 from app.models.learning import LearningPath
 from app.models.user import User
-from app.schemas.learning import LearningPathCreate, LearningPathRead, LearningPathWithTopics, TopicCreate, TopicRead
+from app.schemas.learning import LearningPathCreate, LearningPathRead, LearningPathUpdate, LearningPathWithTopics, TopicCreate, TopicRead
 from app.models.learning import Topic
 
 router = APIRouter(prefix="/paths", tags=["paths"])
@@ -51,6 +51,40 @@ def get_path(
     if not path:
         raise HTTPException(status_code=404, detail="Learning path not found")
     return path
+
+
+@router.patch("/{path_id}", response_model=LearningPathRead)
+def update_path(
+    path_id: str,
+    payload: LearningPathUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    path = db.query(LearningPath).filter(LearningPath.id == path_id, LearningPath.user_id == current_user.id).first()
+    if not path:
+        raise HTTPException(status_code=404, detail="Learning path not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(path, field, value)
+
+    db.add(path)
+    db.commit()
+    db.refresh(path)
+    return path
+
+
+@router.delete("/{path_id}", status_code=204)
+def delete_path(
+    path_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    path = db.query(LearningPath).filter(LearningPath.id == path_id, LearningPath.user_id == current_user.id).first()
+    if not path:
+        raise HTTPException(status_code=404, detail="Learning path not found")
+    db.delete(path)
+    db.commit()
 
 
 @router.post("/{path_id}/topics", response_model=TopicRead)

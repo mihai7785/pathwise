@@ -103,3 +103,21 @@ def update_topic(
             "Suggest next subtopics",
         ],
     }
+
+
+@router.delete("/{topic_id}", status_code=204)
+def delete_topic(
+    topic_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    path_owned = topic.learning_path.user_id == current_user.id if topic.learning_path else False
+    if not path_owned:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    db.delete(topic)
+    db.commit()

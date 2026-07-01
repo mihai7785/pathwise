@@ -9,6 +9,13 @@ class LearningPathCreate(BaseModel):
     status: str = "active"
 
 
+class LearningPathUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    target_role: str | None = None
+    status: str | None = None
+
+
 class TopicCreate(BaseModel):
     title: str
     description: str | None = None

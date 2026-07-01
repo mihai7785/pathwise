@@ -132,6 +132,11 @@ textarea {
 }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
 .topic-row, .resource-row {
   display: flex;
@@ -257,6 +262,61 @@ textarea {
   gap: 10px;
 }
 
+.danger-button {
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+.compact-grid {
+  align-items: end;
+}
+
+.path-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.linked-topics {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.linked-topic-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.linked-topic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.pill-action {
+  border: 0;
+  background: transparent;
+  color: #fca5a5;
+  padding: 0;
+  line-height: 1;
+}
+
+.linked-resource-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
 .form-field {
   display: grid;
   gap: 8px;
@@ -312,4 +372,65 @@ textarea {
   width: min(100%, 320px);
   display: grid;
   gap: 10px;
+}
+
+.danger-button {
+  background: #450a0a;
+  color: #fecaca;
+  border: 1px solid #7f1d1d;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.danger-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.split-actions {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.multi-row-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.top-spacing {
+  margin-top: 16px;
+}
+
+.bottom-spacing {
+  margin-bottom: 16px;
+}
+
+.linked-resource-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.linked-resource-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.linked-resource-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.resource-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
 }

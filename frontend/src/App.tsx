@@ -32,7 +32,15 @@ export default function App() {
       <main className="content">
         {view === 'dashboard' && <DashboardPage />}
         {view === 'path' && <PathPage onOpenTopic={(topicId) => { setSelectedTopicId(topicId); setView('topic') }} />}
-        {view === 'topic' && <TopicPage topicId={selectedTopicId} />}
+        {view === 'topic' && (
+          <TopicPage
+            topicId={selectedTopicId}
+            onTopicDeleted={() => {
+              setSelectedTopicId(null)
+              setView('path')
+            }}
+          />
+        )}
         {view === 'inbox' && <InboxPage />}
         {view === 'copilot' && <CopilotPage />}
       </main>

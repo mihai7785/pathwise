@@ -61,3 +61,7 @@ export async function apiPatch<T>(path: string, body: unknown, options?: Omit<Ap
     body: JSON.stringify(body),
   })
 }
+
+export async function apiDelete<T>(path: string, options?: Omit<ApiRequestOptions, 'method'>): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'DELETE' })
+}

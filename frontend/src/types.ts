@@ -10,13 +10,16 @@ export type DashboardData = {
   copilot_suggestions: string[]
 }
 
+export type LearningPathStatus = 'active' | 'paused' | 'completed' | 'archived'
+export type TopicStatus = 'not_started' | 'in_progress' | 'blocked' | 'done'
+
 export type LearningPath = {
   id: string
   user_id: string
   title: string
   description?: string | null
   target_role?: string | null
-  status: string
+  status: LearningPathStatus
   topics?: Topic[]
 }
 
@@ -26,10 +29,18 @@ export type Topic = {
   parent_topic_id?: string | null
   title: string
   description?: string | null
-  status: string
+  status: TopicStatus
   priority: string
   order_index: number
   confidence?: number | null
+}
+
+export type ResourceSuggestion = {
+  topic_id: string
+  topic_title?: string | null
+  confidence_score?: number | null
+  reason?: string | null
+  status: string
 }
 
 export type Resource = {
@@ -39,13 +50,15 @@ export type Resource = {
   status: string
   source_url?: string | null
   summary?: string | null
-  suggestions: Array<{
-    topic_id: string
-    topic_title?: string | null
-    confidence_score?: number | null
-    reason?: string | null
-    status: string
-  }>
+  suggestions: ResourceSuggestion[]
+}
+
+export type TopicDetailResource = {
+  id: string
+  title?: string | null
+  type: string
+  summary?: string | null
+  relevance_score?: number | null
 }
 
 export type TopicDetail = {
@@ -53,17 +66,11 @@ export type TopicDetail = {
   learning_path_id: string
   title: string
   description?: string | null
-  status: string
+  status: TopicStatus
   priority: string
   confidence?: number | null
   estimated_hours?: number | null
-  resources: Array<{
-    id: string
-    title?: string | null
-    type: string
-    summary?: string | null
-    relevance_score?: number | null
-  }>
+  resources: TopicDetailResource[]
   notes: string[]
   ai_actions: string[]
 }
@@ -73,8 +80,6 @@ export type CopilotContext = {
   starter_prompts: string[]
   provider_strategy: string
 }
-
-export type TopicStatus = 'not_started' | 'in_progress' | 'blocked' | 'done'
 
 export type TopicLinkResponse = {
   ok: boolean
