@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = 'Learning Copilot API'
+    app_name: str = 'Pathwise API'
     api_prefix: str = '/api'
     database_url: str = 'sqlite:///./learning_copilot.db'
     cors_origins: list[str] = [

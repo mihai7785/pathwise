@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-const AUTH_STORAGE_KEY = 'learning-copilot.auth'
+const AUTH_STORAGE_KEY = 'pathwise.auth'
 
 export type AuthUser = {
   id?: string

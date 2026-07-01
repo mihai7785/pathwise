@@ -9,7 +9,7 @@ router = APIRouter(prefix="/copilot", tags=["copilot"])
 @router.get("/conversation")
 def get_copilot_context(current_user: User = Depends(get_current_user)):
     return {
-        "title": f"{current_user.name}'s AI Engineer Copilot",
+        "title": f"{current_user.name}'s Pathwise Copilot",
         "starter_prompts": [
             "What should I study next?",
             "Explain embeddings like I'm revising for an interview.",

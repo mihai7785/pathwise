@@ -14,7 +14,7 @@ export function Sidebar({ current, onChange, userName, userEmail, onLogout }: Pr
   return (
     <aside className="sidebar">
       <div>
-        <div className="brand">Learning Copilot</div>
+        <div className="brand">Pathwise</div>
         <nav>
           {items.map((item) => (
             <button

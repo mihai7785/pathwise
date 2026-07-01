@@ -37,7 +37,7 @@ export function LoginPage({ onLogin }: Props) {
     <div className="auth-screen">
       <div className="auth-card">
         <div>
-          <div className="auth-eyebrow">Learning Copilot</div>
+          <div className="auth-eyebrow">Pathwise</div>
           <h1>Sign in</h1>
           <p className="muted">Use the dev login endpoint to start a local authenticated session.</p>
         </div>

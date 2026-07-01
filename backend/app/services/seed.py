@@ -48,7 +48,7 @@ def seed_user_starter_data(db: Session, user: User) -> None:
     suggestions = [
         ResourceTopicSuggestion(id=str(uuid.uuid4()), resource_id=resources[2].id, topic_id=topic_ids["rag"], confidence_score=0.71, reason="Screenshot appears to mention embeddings and retrieval.", status="pending")
     ]
-    conversation = AIConversation(id=f"conv_{uuid.uuid4().hex[:10]}", user_id=user.id, title="AI Engineer Copilot", context_type="path", context_id=path.id)
+    conversation = AIConversation(id=f"conv_{uuid.uuid4().hex[:10]}", user_id=user.id, title="Pathwise Copilot", context_type="path", context_id=path.id)
 
     db.add(path)
     for item in topics + resources + links + suggestions:

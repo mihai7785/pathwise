@@ -1,4 +1,4 @@
-# Learning Copilot
+# Pathwise
 
 Web-first learning path tracker with an AI copilot.
 
@@ -8,7 +8,7 @@ Web-first learning path tracker with an AI copilot.
 
 ## Structure
 - `backend/` API, models, schemas, settings
-- `frontend/` React UI for dashboard, path, topic, inbox
+- `frontend/` React UI for dashboard, path, topic, inbox, and copilot
 
 ## Backend
 ```bash
@@ -26,15 +26,23 @@ npm install
 npm run dev
 ```
 
-## MVP implemented in scaffold
+## Current product direction
+- Product name: **Pathwise**
+- Repository: `mihai7785/pathwise`
+- Focus: structured learning paths, topic tracking, resource capture, and AI-assisted study workflows
+
+## MVP implemented so far
 - users, learning paths, topics, resources
 - topic hierarchy and dependencies
-- basic CRUD API skeleton
-- sample seeded dashboard data endpoint
-- React screens for Dashboard, Path, Topic, Inbox
+- local auth/session flow for development
+- user-scoped API access
+- topic and resource creation flows
+- sample seeded starter data per user
+- React screens for Dashboard, Path, Topic, Inbox, and Copilot
 
 ## Next recommended steps
-1. Add auth (Clerk/Auth.js or FastAPI JWT)
-2. Replace mock frontend data with API mutations
+1. Complete CRUD for paths/topics/resources
+2. Add topic-resource linking flows
 3. Add async AI job processing
 4. Add file uploads + OCR/extraction pipeline
+5. Add richer study analytics and reviews
