@@ -1,13 +1,15 @@
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.ai import AIJob
 from app.models.learning import Topic
-from app.models.resource import Resource, TopicResource
+from app.models.resource import Resource, ResourceFile, TopicResource
 from app.models.user import User
 from app.schemas.resource import ResourceCreate, ResourceTopicLinkCreate
 from app.services.resource_processing import process_resource
@@ -42,6 +44,55 @@ def create_resource(
     db.add(resource)
     db.commit()
     db.refresh(resource)
+    return serialize_resource(resource, db)
+
+
+@router.post("/upload")
+async def upload_resource(
+    title: str | None = Form(default=None),
+    resource_type: str = Form(alias="type", default="image"),
+    source_url: str | None = Form(default=None),
+    raw_text: str | None = Form(default=None),
+    auto_process: bool = Form(default=True),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resource = Resource(
+        id=f"res_{uuid.uuid4().hex[:10]}",
+        user_id=current_user.id,
+        type=resource_type,
+        title=title or file.filename,
+        source_url=source_url,
+        raw_text=raw_text,
+        status="inbox",
+    )
+    db.add(resource)
+    db.flush()
+
+    file_id = f"file_{uuid.uuid4().hex[:10]}"
+    safe_name = _sanitize_filename(file.filename or "upload.bin")
+    relative_storage_key = f"{current_user.id}/{resource.id}/{safe_name}"
+    target_path = Path(settings.uploads_dir) / relative_storage_key
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = await file.read()
+    target_path.write_bytes(payload)
+
+    resource_file = ResourceFile(
+        id=file_id,
+        resource_id=resource.id,
+        storage_key=relative_storage_key,
+        file_name=safe_name,
+        mime_type=file.content_type or "application/octet-stream",
+        file_size_bytes=len(payload),
+    )
+    db.add(resource_file)
+    db.commit()
+    db.refresh(resource)
+
+    if auto_process:
+        resource, _ = process_resource(db, current_user, resource)
+
     return serialize_resource(resource, db)
 
 
@@ -160,6 +211,15 @@ def serialize_resource(resource: Resource, db: Session):
             for link in resource.topic_links
         ],
         "latest_job": _serialize_latest_job(resource, db),
+        "files": [
+            {
+                "id": file.id,
+                "file_name": file.file_name,
+                "mime_type": file.mime_type,
+                "file_size_bytes": file.file_size_bytes,
+            }
+            for file in resource.files
+        ],
         "suggestions": [
             {
                 "topic_id": suggestion.topic_id,
@@ -190,3 +250,14 @@ def _serialize_latest_job(resource: Resource, db: Session):
         "model": latest_job.model,
         "error_message": latest_job.error_message,
     }
+
+
+def _sanitize_filename(name: str) -> str:
+    keep = []
+    for char in name:
+        if char.isalnum() or char in {".", "-", "_"}:
+            keep.append(char)
+        else:
+            keep.append("_")
+    sanitized = "".join(keep).strip("._")
+    return sanitized or "upload.bin"

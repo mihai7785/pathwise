@@ -1,12 +1,15 @@
+import json
 import re
 import uuid
+from pathlib import Path
 from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.ai import AIJob
 from app.models.learning import LearningPath, Topic
-from app.models.resource import Resource, ResourceTopicSuggestion
+from app.models.resource import Resource, ResourceFile, ResourceTopicSuggestion
 from app.models.user import User
 
 TOKEN_RE = re.compile(r"[a-zA-Z0-9]+")
@@ -39,10 +42,42 @@ def _resource_source_text(resource: Resource) -> str:
     return "\n".join(part.strip() for part in parts if part and part.strip())
 
 
+def _read_text_from_file(resource: Resource) -> str | None:
+    if not resource.files:
+        return None
+
+    first_file: ResourceFile = resource.files[0]
+    mime_type = (first_file.mime_type or "").lower()
+    storage_path = Path(settings.uploads_dir) / first_file.storage_key
+    if not storage_path.exists():
+        return None
+
+    if mime_type.startswith("text/") or first_file.file_name.lower().endswith((".md", ".txt", ".py", ".json", ".csv")):
+        try:
+            return storage_path.read_text(encoding="utf-8", errors="ignore").strip()
+        except OSError:
+            return None
+
+    if mime_type == "application/json" or first_file.file_name.lower().endswith(".json"):
+        try:
+            parsed = json.loads(storage_path.read_text(encoding="utf-8", errors="ignore"))
+            return json.dumps(parsed, indent=2)[:4000]
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    return None
+
+
 def _infer_extracted_text(resource: Resource, source_text: str) -> str:
+    file_text = _read_text_from_file(resource)
+    if file_text:
+        return file_text
+
     if resource.type == "image":
         if resource.raw_text:
             return resource.raw_text.strip()
+        if resource.files:
+            return f"Image file uploaded: {resource.files[0].file_name}. OCR pipeline not implemented yet."
         if resource.title:
             return f"Image note: {resource.title}"
         return "Image resource waiting for OCR extraction."

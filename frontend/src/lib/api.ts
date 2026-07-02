@@ -50,6 +50,14 @@ export async function apiPost<T>(path: string, body: unknown, options?: Omit<Api
   })
 }
 
+export async function apiPostForm<T>(path: string, body: FormData, options?: Omit<ApiRequestOptions, 'method' | 'body' | 'headers'>): Promise<T> {
+  return apiRequest<T>(path, {
+    ...options,
+    method: 'POST',
+    body,
+  })
+}
+
 export async function apiPatch<T>(path: string, body: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>): Promise<T> {
   const requestHeaders = new Headers(options?.headers)
   requestHeaders.set('Content-Type', 'application/json')

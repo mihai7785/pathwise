@@ -39,14 +39,17 @@ npm run dev
 - path creation, editing, status updates, and deletion
 - topic creation, status updates, and deletion
 - resource creation and deletion
+- resource processing with local heuristic summary + topic suggestions
+- multipart file/image upload with persisted resource files
+- basic local extraction for uploaded text-based files, plus image/file placeholders for later OCR
 - resource-to-topic linking
 - resource unlinking from topics
 - sample seeded starter data per user
 - React screens for Dashboard, Path, Topic, Inbox, and Copilot
 
 ## Next recommended steps
-1. Add richer resource processing and AI-assisted classification
+1. Add OCR/image extraction instead of the current placeholder path
 2. Add async AI job processing
-3. Add file uploads + OCR/extraction pipeline
+3. Add provider-backed summarization/classification adapters
 4. Add richer study analytics and reviews
 5. Add real authentication and multi-user hardening beyond dev login

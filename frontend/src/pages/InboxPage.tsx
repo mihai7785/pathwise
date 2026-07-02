@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
-import { apiDelete, apiGet, apiPost } from '../lib/api'
+import { apiDelete, apiGet, apiPost, apiPostForm } from '../lib/api'
 import type { LearningPath, Resource, TopicLinkResponse } from '../types'
 
 type TopicOption = {
@@ -27,6 +27,7 @@ export function InboxPage() {
   const [title, setTitle] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [rawText, setRawText] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedTopicByResource, setSelectedTopicByResource] = useState<Record<string, string>>({})
   const [linkingResourceId, setLinkingResourceId] = useState<string | null>(null)
   const [linkErrorByResource, setLinkErrorByResource] = useState<Record<string, string>>({})
@@ -65,6 +66,7 @@ export function InboxPage() {
     setTitle('')
     setSourceUrl('')
     setRawText('')
+    setSelectedFile(null)
     setFormError(null)
   }
 
@@ -91,16 +93,32 @@ export function InboxPage() {
       return
     }
 
+    if (resourceType === 'image' && !selectedFile) {
+      setFormError('Choose an image or file to upload.')
+      return
+    }
+
     setIsSaving(true)
     setFormError(null)
 
     try {
-      await apiPost<Resource>('/resources', {
-        type: resourceType,
-        title: trimmedTitle || null,
-        source_url: trimmedSourceUrl || null,
-        raw_text: trimmedRawText || null,
-      })
+      if (selectedFile) {
+        const formData = new FormData()
+        formData.append('type', resourceType)
+        formData.append('title', trimmedTitle || selectedFile.name)
+        if (trimmedSourceUrl) formData.append('source_url', trimmedSourceUrl)
+        if (trimmedRawText) formData.append('raw_text', trimmedRawText)
+        formData.append('auto_process', 'true')
+        formData.append('file', selectedFile)
+        await apiPostForm<Resource>('/resources/upload', formData)
+      } else {
+        await apiPost<Resource>('/resources', {
+          type: resourceType,
+          title: trimmedTitle || null,
+          source_url: trimmedSourceUrl || null,
+          raw_text: trimmedRawText || null,
+        })
+      }
       await loadResources()
       resetForm()
       setShowAddForm(false)
@@ -240,6 +258,18 @@ export function InboxPage() {
                   onChange={(event) => setRawText(event.target.value)}
                 />
               </label>
+
+              <label className="form-field inline-form-field-wide">
+                <span>File upload</span>
+                <input
+                  type="file"
+                  accept={resourceType === 'image' ? 'image/*,.txt,.md,.json,.csv' : undefined}
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                />
+                <span className="muted small">
+                  Optional for link/text resources. Required for image resources.
+                </span>
+              </label>
             </div>
 
             {formError && <div className="auth-error">{formError}</div>}
@@ -319,6 +349,15 @@ export function InboxPage() {
                       <p className="muted small">
                         {resource.extracted_text.length > 220 ? `${resource.extracted_text.slice(0, 220)}…` : resource.extracted_text}
                       </p>
+                    </div>
+                  )}
+
+                  {resource.files && resource.files.length > 0 && (
+                    <div className="resource-meta-block">
+                      <span className="muted small">Uploaded files</span>
+                      <div className="muted small">
+                        {resource.files.map((file) => `${file.file_name} (${Math.max(1, Math.round(file.file_size_bytes / 1024))} KB)`).join(', ')}
+                      </div>
                     </div>
                   )}
 
