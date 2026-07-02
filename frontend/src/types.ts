@@ -49,7 +49,20 @@ export type Resource = {
   type: string
   status: string
   source_url?: string | null
+  extracted_text?: string | null
   summary?: string | null
+  linked_topics: Array<{
+    topic_id: string
+    topic_title?: string | null
+  }>
+  latest_job?: {
+    id: string
+    type: string
+    status: string
+    provider?: string | null
+    model?: string | null
+    error_message?: string | null
+  } | null
   suggestions: ResourceSuggestion[]
 }
 

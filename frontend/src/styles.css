@@ -434,3 +434,144 @@ textarea {
   gap: 12px;
   margin-bottom: 6px;
 }
+
+.resource-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.resource-processing-list {
+  display: grid;
+  gap: 18px;
+}
+
+.resource-processing-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  padding: 20px 0;
+  border-bottom: 1px solid #1f2937;
+}
+
+.resource-processing-card:first-child {
+  padding-top: 0;
+}
+
+.resource-processing-card:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.resource-card-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.resource-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.resource-process-banner {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #0f172a;
+}
+
+.resource-process-banner.info {
+  border-color: #1d4ed8;
+  background: rgba(30, 64, 175, 0.18);
+  color: #bfdbfe;
+}
+
+.resource-process-banner.success {
+  border-color: #166534;
+  background: rgba(22, 101, 52, 0.18);
+  color: #bbf7d0;
+}
+
+.resource-process-banner.error {
+  border-color: #7f1d1d;
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+}
+
+.resource-summary-card,
+.resource-meta-card,
+.resource-linker-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+}
+
+.resource-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.resource-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.resource-suggestion-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.resource-suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.resource-extracted-preview {
+  margin-top: 4px;
+}
+
+@media (max-width: 1120px) {
+  .resource-processing-card {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-linker-panel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .resource-section-header,
+  .resource-heading,
+  .resource-suggestion-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .resource-inline-actions {
+    justify-content: flex-start;
+  }
+
+  .resource-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -9,6 +9,11 @@ type TopicOption = {
   pathTitle: string
 }
 
+type ProcessingState = {
+  phase: 'starting' | 'success' | 'error'
+  message: string
+}
+
 export function InboxPage() {
   const [resources, setResources] = useState<Resource[]>([])
   const [topics, setTopics] = useState<TopicOption[]>([])
@@ -16,6 +21,7 @@ export function InboxPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [deletingResourceId, setDeletingResourceId] = useState<string | null>(null)
+  const [processingResourceId, setProcessingResourceId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [resourceType, setResourceType] = useState('link')
   const [title, setTitle] = useState('')
@@ -25,6 +31,7 @@ export function InboxPage() {
   const [linkingResourceId, setLinkingResourceId] = useState<string | null>(null)
   const [linkErrorByResource, setLinkErrorByResource] = useState<Record<string, string>>({})
   const [resourceActionError, setResourceActionError] = useState<string | null>(null)
+  const [processingStateByResource, setProcessingStateByResource] = useState<Record<string, ProcessingState>>({})
 
   const loadResources = useCallback(async () => {
     const nextResources = await apiGet<Resource[]>('/resources')
@@ -101,6 +108,33 @@ export function InboxPage() {
       setFormError(err instanceof Error ? err.message : 'Failed to add resource')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleProcessResource = async (resource: Resource) => {
+    setProcessingResourceId(resource.id)
+    setResourceActionError(null)
+    setProcessingStateByResource((current) => ({
+      ...current,
+      [resource.id]: { phase: 'starting', message: 'Processing resource…' },
+    }))
+
+    try {
+      await apiPost<Resource>(`/resources/${resource.id}/process`, {})
+      await loadResources()
+      setProcessingStateByResource((current) => ({
+        ...current,
+        [resource.id]: { phase: 'success', message: 'Summary and suggestions refreshed.' },
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to process resource'
+      setProcessingStateByResource((current) => ({
+        ...current,
+        [resource.id]: { phase: 'error', message },
+      }))
+      setResourceActionError(message)
+    } finally {
+      setProcessingResourceId(null)
     }
   }
 
@@ -231,30 +265,100 @@ export function InboxPage() {
       )}
 
       <section className="card">
-        <h2>Resources</h2>
+        <div className="resource-section-header">
+          <div>
+            <h2>Resources</h2>
+            <p className="muted">Run processing to extract a summary and generate topic suggestions for each item.</p>
+          </div>
+          <span className="badge not_started">{resources.length} total</span>
+        </div>
+
         {resourceActionError && <div className="auth-error bottom-spacing">{resourceActionError}</div>}
-        <div className="resource-list">
+
+        <div className="resource-list resource-processing-list">
           {resources.map((resource) => {
             const selectedTopicId = selectedTopicByResource[resource.id] ?? suggestedTopicByResource[resource.id] ?? ''
+            const processingState = processingStateByResource[resource.id]
+            const linkedTopics = resource.linked_topics ?? []
+            const isProcessing = processingState?.phase === 'starting'
 
             return (
-              <div key={resource.id} className="resource-row">
-                <div className="resource-content">
+              <article key={resource.id} className="resource-processing-card">
+                <div className="resource-card-main">
                   <div className="resource-heading">
-                    <strong>{resource.title || 'Untitled resource'}</strong>
-                    <button
-                      className="danger-button"
-                      onClick={() => handleDeleteResource(resource)}
-                      disabled={deletingResourceId === resource.id}
-                    >
-                      {deletingResourceId === resource.id ? 'Deleting…' : 'Delete'}
-                    </button>
+                    <div>
+                      <strong>{resource.title || 'Untitled resource'}</strong>
+                      <div className="muted small">
+                        {resource.type} • {resource.status}
+                        {resource.source_url ? ` • ${resource.source_url}` : ''}
+                      </div>
+                    </div>
+                    <div className="resource-inline-actions">
+                      <button
+                        className={processingState?.phase === 'success' ? 'primary' : 'secondary-button'}
+                        onClick={() => handleProcessResource(resource)}
+                        disabled={isProcessing || deletingResourceId === resource.id}
+                      >
+                        {isProcessing ? 'Processing…' : 'Process'}
+                      </button>
+                      <button
+                        className="danger-button"
+                        onClick={() => handleDeleteResource(resource)}
+                        disabled={deletingResourceId === resource.id || isProcessing}
+                      >
+                        {deletingResourceId === resource.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="muted small">{resource.type} • {resource.status}</div>
-                  <p>{resource.summary}</p>
-                  {resource.suggestions[0] && (
-                    <div className="muted small">
-                      Suggested topic: {resource.suggestions[0].topic_title} ({Math.round((resource.suggestions[0].confidence_score ?? 0) * 100)}%)
+
+                  <p>{resource.summary ?? 'No summary yet. Process this resource to generate one.'}</p>
+
+                  {resource.extracted_text && (
+                    <div className="resource-meta-block">
+                      <span className="muted small">Extracted text</span>
+                      <p className="muted small">
+                        {resource.extracted_text.length > 220 ? `${resource.extracted_text.slice(0, 220)}…` : resource.extracted_text}
+                      </p>
+                    </div>
+                  )}
+
+                  {linkedTopics.length > 0 && (
+                    <div className="resource-meta-block">
+                      <span className="muted small">Linked topics</span>
+                      <div className="linked-topic-list">
+                        {linkedTopics.map((topic) => (
+                          <span key={`${resource.id}-${topic.topic_id}`} className="linked-topic-pill">
+                            {topic.topic_title ?? 'Untitled topic'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {resource.suggestions.length > 0 && (
+                    <div className="resource-meta-block">
+                      <span className="muted small">Suggested topics</span>
+                      <div className="resource-suggestion-list">
+                        {resource.suggestions.map((suggestion) => (
+                          <div key={`${resource.id}-${suggestion.topic_id}`} className="resource-suggestion-item">
+                            <strong>{suggestion.topic_title ?? 'Untitled topic'}</strong>
+                            <div className="muted small">
+                              {typeof suggestion.confidence_score === 'number' ? `${Math.round((suggestion.confidence_score > 1 ? suggestion.confidence_score : suggestion.confidence_score * 100))}% confidence` : 'Suggested'}
+                              {suggestion.reason ? ` · ${suggestion.reason}` : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {resource.latest_job && (
+                    <div className="muted small">Last run: {resource.latest_job.provider ?? 'local'} · {resource.latest_job.status}</div>
+                  )}
+
+                  {processingState && (
+                    <div className={`resource-process-state ${processingState.phase === 'error' ? 'error' : processingState.phase === 'success' ? 'success' : ''}`}>
+                      {processingState.message}
                     </div>
                   )}
                 </div>
@@ -268,7 +372,7 @@ export function InboxPage() {
                         const value = event.target.value
                         setSelectedTopicByResource((current) => ({ ...current, [resource.id]: value }))
                       }}
-                      disabled={topics.length === 0 || linkingResourceId === resource.id || deletingResourceId === resource.id}
+                      disabled={topics.length === 0 || linkingResourceId === resource.id || deletingResourceId === resource.id || isProcessing}
                     >
                       <option value="">Select a topic</option>
                       {topics.map((topic) => (
@@ -279,13 +383,13 @@ export function InboxPage() {
                   <button
                     className="secondary-button"
                     onClick={() => handleLinkTopic(resource.id)}
-                    disabled={topics.length === 0 || linkingResourceId === resource.id || deletingResourceId === resource.id || !selectedTopicId}
+                    disabled={topics.length === 0 || linkingResourceId === resource.id || deletingResourceId === resource.id || isProcessing || !selectedTopicId}
                   >
                     {linkingResourceId === resource.id ? 'Linking…' : 'Link topic'}
                   </button>
                   {linkErrorByResource[resource.id] && <div className="auth-error">{linkErrorByResource[resource.id]}</div>}
                 </div>
-              </div>
+              </article>
             )
           })}
         </div>
